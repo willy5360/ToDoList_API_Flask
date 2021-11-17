@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, Task
 #from models import Person
 
 app = Flask(__name__)
@@ -21,9 +21,43 @@ CORS(app)
 setup_admin(app)
 
 # Handle/serialize errors like a JSON object
-@app.errorhandler(APIException)
-def handle_invalid_usage(error):
-    return jsonify(error.to_dict()), error.status_code
+@app.route('/todos', methods=['GET'])
+def get_task():
+    tasks = Task.get_all_tasks()
+    print("ayudaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",tasks)
+    all_tasks = [task.to_dict() for task in tasks]
+    print("aqui estoy buscameeeeeeee",all_tasks)
+    return jsonify(all_tasks), 200
+
+@app.route('/todos', methods=['POST'])
+def create_task():
+    new_label = request.json.get('label', None) #Aqui me devuelve lo que escriba en el front en la parte de "label:" y si no lo esribe con none
+
+    if not new_label:
+        return jsonify({'error':"Missing task label"}), 400
+    task = Task(label = new_label, done = False)
+    # try:
+    task_created = task.create_new_task()
+    return jsonify(task_created.to_dict()), 201    
+    # except exc.IntegrityError:
+    #     return jsonify({'error':'Fail on load'}), 400
+
+@app.route('/todos/<int:id>' , methods=['PATCH'])
+def set_task_finished(id):
+    task = Task.get_task_id(id)
+    if task:
+        task.task_finished()
+        return jsonify("Task is done!!!",task.to_dict()), 200
+    return jsonify({'error': 'Task not found'}), 400
+
+@app.route('/todos/<int:id>', methods=['DELETE'])
+def delete(id):
+    task = Task.get_task_id(id)
+    if task:
+        task.delete_task()
+        return jsonify("task eliminated",task.to_dict() ) , 200
+    return jsonify({'error': 'Task not found'}), 400
+
 
 # generate sitemap with all your endpoints
 @app.route('/')
